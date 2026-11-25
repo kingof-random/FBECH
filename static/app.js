@@ -40,7 +40,30 @@ function resultPill(c){
 }
 function toast(msg, kind=''){ const d=document.createElement('div'); d.className='toast '+kind; d.textContent=msg; $('#toastRoot').appendChild(d); setTimeout(()=>{d.style.opacity='0';d.style.transition='.3s';setTimeout(()=>d.remove(),320)},2600); }
 async function api(url, opts){ const r = await fetch(url, opts); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error || r.status); return r.json(); }
-async function apiJSON(url, method, data){ return api(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data||{})}); }
+async function apiJSON(url, method, data){ return api(url, {method, headers:{'Content-Type':'application/json','X-CSRF-Token':window.FBECH_CSRF||''}, body:JSON.stringify(data||{})}); }
+function showLogin(message=''){
+  document.querySelector('.app').style.display='none';
+  const root=$('#authRoot'); root.style.display='grid';
+  root.innerHTML=`<form id="loginForm" style="width:min(420px,calc(100% - 32px));margin:auto;padding:30px;background:#111923;border:1px solid #344252;border-radius:16px;color:#eef3f8;box-shadow:0 20px 70px #0008">
+    <div style="color:#ff8748;font-size:12px;font-weight:800;letter-spacing:2px">FEROX / F-BECH</div>
+    <h1 style="margin:12px 0 6px;font-size:26px">Engineering workspace</h1>
+    <p style="color:#9eacba;margin:0 0 22px">Sign in to access compliance records, evidence and project data.</p>
+    <label style="display:block;margin:12px 0 6px">Username</label><input id="loginUser" autocomplete="username" required style="box-sizing:border-box;width:100%;padding:12px;background:#0b1118;color:#fff;border:1px solid #455466;border-radius:8px">
+    <label style="display:block;margin:14px 0 6px">Password</label><input id="loginPass" type="password" autocomplete="current-password" required style="box-sizing:border-box;width:100%;padding:12px;background:#0b1118;color:#fff;border:1px solid #455466;border-radius:8px">
+    <p id="loginError" style="color:#ff8c78;min-height:20px;font-size:13px">${esc(message)}</p>
+    <button type="submit" style="width:100%;padding:12px;border:0;border-radius:8px;background:#f06a32;color:#fff;font-weight:800;cursor:pointer">Sign in</button>
+    <p style="font-size:11px;color:#82909e;margin:18px 0 0">Public rulebook source pages remain accessible without signing in.</p>
+  </form>`;
+  $('#loginForm').onsubmit=async e=>{e.preventDefault();const b=$('#loginForm button');b.disabled=true;b.textContent='Signing in…';try{const r=await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#loginUser').value,password:$('#loginPass').value})});window.FBECH_CSRF=r.csrf_token;await startApp();}catch(err){$('#loginError').textContent=err.message==='401'?'Incorrect username or password':err.message;b.disabled=false;b.textContent='Sign in';}};
+}
+async function startApp(){
+  $('#authRoot').style.display='none';document.querySelector('.app').style.display='';
+  await refresh();
+  const fr=await fetch('/figures.json');if(fr.ok)(await fr.json()).forEach(f=>FIG_PAGES[f.figure]=f);
+  S.treeOpen['B']=true;S.treeOpen['B.3']=true;
+  if(!window.FBECH_LISTENERS){window.addEventListener('hashchange',router);initSearch();$('#menuBtn').onclick=()=>$('#sidebar').classList.toggle('open');$('#printBtn').onclick=()=>{if(S.route!=='report'){location.hash='#/report';setTimeout(()=>window.print(),500);}else window.print();};window.FBECH_LISTENERS=true;}
+  router();
+}
 
 /* ---------- state ---------- */
 function indexState(){
@@ -156,13 +179,12 @@ function closeModal(){ $('#modalRoot').innerHTML=''; }
 
 /* ---------- init ---------- */
 (async function(){
-  try{ await refresh(); const fr=await fetch('/figures.json'); if(fr.ok) (await fr.json()).forEach(f=>FIG_PAGES[f.figure]=f); }catch(e){ $('#view').innerHTML='<div class="empty">Failed to load F-BECH data. Is the server running?<br><small>'+esc(e.message)+'</small></div>'; return; }
-  S.treeOpen['B']=true; S.treeOpen['B.3']=true;
-  window.addEventListener('hashchange', router);
-  initSearch();
-  $('#menuBtn').onclick=()=>$('#sidebar').classList.toggle('open');
-  $('#printBtn').onclick=()=>{ if(S.route!=='report'){ location.hash='#/report'; setTimeout(()=>window.print(),500); } else window.print(); };
-  router();
+  try{
+    const auth=await api('/api/session');
+    if(!auth.authenticated){showLogin();return;}
+    window.FBECH_CSRF=auth.csrf_token;
+    await startApp();
+  }catch(e){$('#view').innerHTML='<div class="empty">Unable to connect to F-BECH.<br><small>'+esc(e.message)+'</small></div>';}
 })();
 
 /* ================= DASHBOARD ================= */
@@ -606,7 +628,7 @@ function bindWorkspace(){
     const id=el.dataset.evfile; if(!el.files||!el.files.length) return;
     const fd=new FormData(); for(const f of el.files) fd.append('files',f);
     try{
-      const r=await api('/api/checks/'+id+'/evidence',{method:'POST',body:fd});
+      const r=await api('/api/checks/'+id+'/evidence',{method:'POST',headers:{'X-CSRF-Token':window.FBECH_CSRF||''},body:fd});
       for(const e of r.saved){ S.evidence.push(e); if(!S.evByCheck[id]) S.evByCheck[id]=[]; S.evByCheck[id].push(e); }
       const c=S.checks.find(x=>x.id===id); if(c) c._evidence=r.evidence_count;
       const list=document.querySelector('[data-evlist="'+CSS.escape(id)+'"]'); if(list) list.innerHTML=(S.evByCheck[id]||[]).map(e=>`<div class="ev-item"><span>📎</span><a href="/uploads/${encodeURIComponent(e.stored)}" target="_blank" rel="noopener">${esc(e.filename)}</a><span class="tiny muted">${esc((e.uploaded_at||'').slice(0,10))}</span><button class="del" data-evdel="${e.id}" title="Remove">×</button></div>`).join('');
