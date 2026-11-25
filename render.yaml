@@ -1,12 +1,14 @@
 services:
   - type: web
-    name: fbech
+    name: fbech-ferox
     runtime: python
     plan: starter
+    region: singapore
     branch: feature/auth-render-deployment
     buildCommand: pip install -r requirements.txt
     startCommand: python seed.py && gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT app:app
     healthCheckPath: /healthz
+    autoDeploy: true
     disk:
       name: fbech-data
       mountPath: /var/data
