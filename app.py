@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-import json, os, re, sqlite3, datetime, werkzeug
-from flask import Flask, request, jsonify, send_from_directory, render_template, abort
+import json, os, re, sqlite3, datetime, secrets, werkzeug
+from flask import Flask, request, jsonify, send_from_directory, render_template, abort, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-DB = os.path.join(BASE, 'instance', 'fbech.db')
-UPLOAD = os.path.join(BASE, 'uploads', 'evidence')
+DATA_DIR = os.environ.get('FBECH_DATA_DIR', os.path.join(BASE, 'instance'))
+os.makedirs(DATA_DIR, exist_ok=True)
+DB = os.path.join(DATA_DIR, 'fbech.db')
+UPLOAD = os.path.join(DATA_DIR, 'uploads', 'evidence')
 SRC = os.path.join(BASE, 'static', 'src')
 os.makedirs(UPLOAD, exist_ok=True)
 os.makedirs(SRC, exist_ok=True)
@@ -12,6 +15,11 @@ os.makedirs(SRC, exist_ok=True)
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 40 * 1024 * 1024
 app.config['JSON_AS_ASCII'] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'local-development-only-change-me'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('COOKIE_SECURE', '1' if os.environ.get('RENDER') else '0') == '1'
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(hours=12)
 
 STATUSES = ['Not Started', 'In Progress', 'Pending Verification', 'Verified', 'Failed', 'Not Applicable']
 SEVERITIES = ['Critical', 'High', 'Medium', 'Low']
@@ -23,6 +31,71 @@ def db():
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     return con
+
+def init_auth():
+    con = db()
+    con.execute("""CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    # Bootstrap exactly one initial account when the database has no users.
+    username = os.environ.get('FBECH_ADMIN_USERNAME', '').strip()
+    password = os.environ.get('FBECH_ADMIN_PASSWORD', '')
+    count = con.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    if count == 0 and username and password:
+        con.execute('INSERT INTO users (username,password_hash,created_at) VALUES (?,?,?)',
+                    (username, generate_password_hash(password), datetime.datetime.now().isoformat(timespec='seconds')))
+    con.commit()
+    con.close()
+
+init_auth()
+
+@app.before_request
+def protect_private_data():
+    path = request.path
+    public_paths = ('/api/login', '/api/session', '/api/logout')
+    public_rulebook = path.startswith('/api/rules/') or path.startswith('/source/page/') or path in ('/figures.json',)
+    if path.startswith('/api/') and path not in public_paths and not public_rulebook:
+        if not session.get('user_id'):
+            return jsonify({'error': 'Authentication required'}), 401
+    if path.startswith('/uploads/') and not session.get('user_id'):
+        return jsonify({'error': 'Authentication required'}), 401
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and path.startswith('/api/') and path != '/api/login':
+        expected = session.get('csrf_token')
+        supplied = request.headers.get('X-CSRF-Token', '')
+        if not expected or not secrets.compare_digest(expected, supplied):
+            return jsonify({'error': 'Invalid or missing CSRF token'}), 403
+
+@app.route('/api/session')
+def auth_session():
+    if not session.get('user_id'):
+        return jsonify({'authenticated': False})
+    return jsonify({'authenticated': True, 'username': session.get('username'),
+                    'csrf_token': session.get('csrf_token')})
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json(silent=True) or {}
+    username = str(data.get('username', '')).strip()
+    password = str(data.get('password', ''))
+    con = db()
+    user = con.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
+    con.close()
+    if not user or not check_password_hash(user['password_hash'], password):
+        return jsonify({'error': 'Incorrect username or password'}), 401
+    session.clear()
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    session['csrf_token'] = secrets.token_urlsafe(32)
+    session.permanent = True
+    return jsonify({'ok': True, 'username': user['username'], 'csrf_token': session['csrf_token']})
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'ok': True})
 
 def now():
     return datetime.datetime.now().isoformat(timespec='seconds')
