@@ -208,6 +208,11 @@ def stats(checks, issues, rules):
         'validated_rules': len([r for r in rules if r['status'] == 'validated']),
     }
 
+
+@app.route('/healthz')
+def healthz():
+    return jsonify({'ok': True})
+
 @app.route('/')
 def index():
     return render_template('index.html')
