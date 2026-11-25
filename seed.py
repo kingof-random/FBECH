@@ -7,8 +7,9 @@ from b3_checks_a import CHECKS_A
 from b3_checks_b import CHECKS_B
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-DB = os.path.join(BASE, 'instance', 'fbech.db')
-os.makedirs(os.path.join(BASE, 'instance'), exist_ok=True)
+DATA_DIR = os.environ.get('FBECH_DATA_DIR', os.path.join(BASE, 'instance'))
+os.makedirs(DATA_DIR, exist_ok=True)
+DB = os.path.join(DATA_DIR, 'fbech.db')
 
 B3 = B3_RULES_A + B3_RULES_B + B3_RULES_C
 CHECKS = CHECKS_A + CHECKS_B
