@@ -1,0 +1,6 @@
+flask>=3.0
+pypdf>=5.0
+pymupdf>=1.24
+gunicorn>=22.0
+Flask-WTF>=1.2
+Flask-Limiter>=3.8

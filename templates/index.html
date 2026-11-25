@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F-BECH · FEROX BAJA Engineering & Compliance Hub</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 64 64" width="38" height="38" aria-hidden="true">
+          <defs><linearGradient id="fg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff7a3d"/><stop offset="1" stop-color="#e03d00"/>
+          </linearGradient></defs>
+          <polygon points="32,2 58,17 58,47 32,62 6,47 6,17" fill="none" stroke="url(#fg)" stroke-width="3"/>
+          <path d="M22 18h22v7H30v6h12v7H30v10h-8z" fill="url(#fg)"/>
+          <path d="M40 33l8 8-8 8" fill="none" stroke="#ffb020" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">FEROX<span class="brand-slash">/</span>BECH</div>
+        <div class="brand-sub">BAJA ENGINEERING<br>&amp; COMPLIANCE HUB</div>
+      </div>
+    </div>
+    <div class="season-pill"><span class="dot"></span> BSC CHENNAI 2027 · ICE</div>
+    <nav class="nav" id="nav">
+      <a href="#/dashboard" data-route="dashboard" class="nav-item"><span class="ico">▦</span>Dashboard</a>
+      <a href="#/rules" data-route="rules" class="nav-item"><span class="ico">▤</span>Rulebook Navigator</a>
+      <a href="#/workspace" data-route="workspace" class="nav-item"><span class="ico">✓</span>Compliance Workspace</a>
+      <a href="#/components" data-route="components" class="nav-item"><span class="ico">◈</span>Components</a>
+      <a href="#/docs" data-route="docs" class="nav-item"><span class="ico">▣</span>Engineering Docs</a>
+      <a href="#/issues" data-route="issues" class="nav-item"><span class="ico">!</span>Issues <span class="nav-badge" id="issueBadge"></span></a>
+      <a href="#/report" data-route="report" class="nav-item"><span class="ico">⎙</span>Compliance Report</a>
+      <a href="#/coverage" data-route="coverage" class="nav-item"><span class="ico">☷</span>Coverage Matrix</a>
+      <a href="#/settings" data-route="settings" class="nav-item"><span class="ico">⚙</span>Project Settings</a>
+      <a href="#/about" data-route="about" class="nav-item"><span class="ico">ⓘ</span>Source &amp; Method</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="mini-stat"><span id="sidePct">0%</span><small>verified</small></div>
+      <div class="mini-bar"><i id="sideBar"></i></div>
+      <div class="foot-note">Rulebook v1.0 · 01 Sep 2026</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <div class="crumb" id="crumb">Dashboard</div>
+      <div class="topsearch">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="globalSearch" type="search" placeholder="Search rules, numbers, text…  ( / )" autocomplete="off">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <div class="top-actions">
+        <a class="btn ghost" href="/api/export" title="Download JSON backup">Export</a>
+        <button class="btn ghost" id="printBtn">Print</button>
+        <div class="userchip"><span class="avatar">FX</span><div><b>FEROX</b><small>Crew</small></div></div>
+      </div>
+    </header>
+    <main class="content" id="view">
+      <div class="loading"><div class="spin"></div><p>Loading F-BECH…</p></div>
+    </main>
+  </div>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
