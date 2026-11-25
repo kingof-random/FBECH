@@ -18,3 +18,11 @@ services:
         sync: false
       - key: FBECH_ADMIN_PASSWORD
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        value: "https://secbzjldxmvrbviilyma.supabase.co"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FBECH_BUCKET
+        value: "fbech-evidence"
