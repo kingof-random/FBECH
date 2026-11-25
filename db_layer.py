@@ -34,7 +34,7 @@ class PGConnection:
             params = tuple(params)
         else:
             q = q.replace("?", "%s")
-        wants_id = bool(re.match(r"(?is)^INSERT\\s+INTO\\s+(evidence|docs|issues|revisions)\\b", q))
+        wants_id = bool(re.match(r"(?is)^INSERT\s+INTO\s+(evidence|docs|issues|revisions)\b", q))
         if wants_id and "RETURNING" not in q.upper():
             q += " RETURNING id"
         cur = self.con.cursor()
