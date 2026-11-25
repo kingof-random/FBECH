@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>F-BECH · Public Rulebook</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080d13;color:#eaf0f6;font:15px/1.5 system-ui,Segoe UI,sans-serif}
+header{position:sticky;top:0;background:#101923;border-bottom:1px solid #2b3948;padding:14px max(18px,calc((100% - 1180px)/2));display:flex;gap:16px;align-items:center;z-index:2}
+.brand{font-weight:800;color:#ff8748;white-space:nowrap}input{width:100%;padding:11px 13px;border:1px solid #435365;border-radius:8px;background:#0a1119;color:#fff}
+main{max-width:1180px;margin:24px auto;padding:0 18px;display:grid;grid-template-columns:minmax(230px,330px) 1fr;gap:18px}
+.panel{background:#111923;border:1px solid #293746;border-radius:12px;overflow:hidden}.list{max-height:calc(100vh - 130px);overflow:auto}.item{display:block;width:100%;text-align:left;padding:11px 13px;background:none;border:0;border-bottom:1px solid #25313e;color:#dce5ed;cursor:pointer}.item:hover,.item.active{background:#202d3b}.item b{color:#ff9b62;margin-right:8px}.detail{padding:22px;min-height:65vh}.muted{color:#98a8b8}.tag{display:inline-block;color:#ffab78;background:#342116;border-radius:5px;padding:3px 7px;font-size:12px}
+h1{font-size:23px;margin:8px 0 16px}h2{font-size:17px;margin-top:24px;color:#ffb17f}.body p{white-space:pre-wrap}.body{line-height:1.75}.source{width:100%;border:1px solid #334454;border-radius:8px;margin-top:12px}
+a{color:#ff9b62}.toplink{margin-left:auto;white-space:nowrap}@media(max-width:720px){main{grid-template-columns:1fr}.list{max-height:38vh}header{flex-wrap:wrap}.toplink{margin-left:0}}
+</style></head>
+<body>
+<header><div class="brand">FEROX / F-BECH</div><input id="q" type="search" placeholder="Search rule number or wording…"><a class="toplink" href="/">Workspace sign in →</a></header>
+<main><section class="panel list" id="list"><p class="muted" style="padding:16px">Loading rulebook…</p></section><article class="panel detail" id="detail"><span class="tag">PUBLIC RULEBOOK</span><h1>BAJA SAEINDIA Chennai 2027 · ICE</h1><p class="muted">Search and browse the 512 indexed rulebook clauses. Compliance records and team evidence remain private to signed-in users.</p></article></main>
+<script>
+const $=s=>document.querySelector(s);let rules=[];
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderList(){const q=$('#q').value.trim().toLowerCase();const hits=rules.filter(r=>(r.id+' '+r.title+' '+r.article).toLowerCase().includes(q)).slice(0,250);$('#list').innerHTML=hits.map(r=>'<button class="item" data-id="'+esc(r.id)+'"><b>'+esc(r.id)+'</b>'+esc(r.title)+'<div class="muted">Page '+r.page+'</div></button>').join('')||'<p class="muted" style="padding:16px">No matching rules.</p>';document.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>openRule(b.dataset.id));}
+async function openRule(id){const r=await fetch('/api/rules/'+encodeURIComponent(id)).then(x=>x.json());document.querySelectorAll('.item').forEach(b=>b.classList.toggle('active',b.dataset.id===id));const body=Array.isArray(r.body)?r.body.map(p=>'<p>'+esc(p)+'</p>').join(''):'<p>No source text available.</p>';$('#detail').innerHTML='<span class="tag">'+esc(r.status||'SOURCE TEXT')+'</span><h1>'+esc(r.id)+' · '+esc(r.title)+'</h1><div class="muted">Page '+esc(r.page)+' · Part '+esc(r.part)+' · Article '+esc(r.article)+'</div><h2>Official rulebook text</h2><div class="body">'+body+'</div><h2>Source page</h2><img class="source" loading="lazy" src="/source/page/'+Number(r.page)+'" alt="Rulebook page '+Number(r.page)+'">';}
+fetch('/api/public-rules').then(r=>{if(!r.ok)throw Error('Unable to load rule index');return r.json()}).then(d=>{rules=d;renderList();}).catch(e=>$('#list').textContent=e.message);
+$('#q').addEventListener('input',renderList);
+</script></body></html>
