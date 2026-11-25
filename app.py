@@ -2,6 +2,8 @@
 import json, os, re, sqlite3, datetime, secrets, werkzeug
 from flask import Flask, request, jsonify, send_from_directory, render_template, abort, session
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get('FBECH_DATA_DIR', os.path.join(BASE, 'instance'))
@@ -20,6 +22,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('COOKIE_SECURE', '1' if os.environ.get('RENDER') else '0') == '1'
 app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(hours=12)
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 STATUSES = ['Not Started', 'In Progress', 'Pending Verification', 'Verified', 'Failed', 'Not Applicable']
 SEVERITIES = ['Critical', 'High', 'Medium', 'Low']
@@ -76,6 +79,7 @@ def auth_session():
                     'csrf_token': session.get('csrf_token')})
 
 @app.route('/api/login', methods=['POST'])
+@limiter.limit('5 per minute')
 def login():
     data = request.get_json(silent=True) or {}
     username = str(data.get('username', '')).strip()
