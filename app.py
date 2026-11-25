@@ -31,9 +31,54 @@ DOC_CATS = ['Design Assumptions', 'CAD Measurements', 'Material Selection', 'Pro
             'Evidence & Photographs', 'Design Revision History']
 
 def db():
+    pg = connect_database()
+    if pg is not None:
+        return pg
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     return con
+
+def storage_config():
+    base = os.environ.get('SUPABASE_URL', '').rstrip('/')
+    key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
+    bucket = os.environ.get('FBECH_BUCKET', 'fbech-evidence')
+    if not base or not key:
+        raise RuntimeError('Supabase Storage is not configured')
+    return base, key, bucket
+
+def storage_headers(key, content_type='application/octet-stream'):
+    return {'apikey': key, 'Authorization': f'Bearer {key}', 'Content-Type': content_type}
+
+def ensure_storage_bucket():
+    base, key, bucket = storage_config()
+    r = requests.post(f'{base}/storage/v1/bucket',
+        headers=storage_headers(key, 'application/json'),
+        json={'id': bucket, 'name': bucket, 'public': False, 'file_size_limit': 41943040},
+        timeout=20)
+    if r.status_code not in (200, 201, 400, 409):
+        r.raise_for_status()
+
+def storage_upload(path, file_obj, content_type):
+    base, key, bucket = storage_config()
+    ensure_storage_bucket()
+    url = f'{base}/storage/v1/object/{quote(bucket, safe="")}/{quote(path, safe="/")}'
+    r = requests.post(url, headers={**storage_headers(key, content_type or 'application/octet-stream'), 'x-upsert':'false'},
+                      data=file_obj.read(), timeout=60)
+    r.raise_for_status()
+
+def storage_delete(path):
+    base, key, bucket = storage_config()
+    url = f'{base}/storage/v1/object/{quote(bucket, safe="")}'
+    r = requests.delete(url, headers=storage_headers(key, 'application/json'), json={'prefixes':[path]}, timeout=30)
+    if r.status_code not in (200, 204, 404):
+        r.raise_for_status()
+
+def storage_download(path):
+    base, key, bucket = storage_config()
+    url = f'{base}/storage/v1/object/{quote(bucket, safe="")}/{quote(path, safe="/")}'
+    r = requests.get(url, headers={'apikey':key, 'Authorization':f'Bearer {key}'}, timeout=60)
+    r.raise_for_status()
+    return r.content
 
 def init_auth():
     con = db()
@@ -307,7 +352,14 @@ def upload_evidence(cid):
         fn = werkzeug.utils.secure_filename(f.filename)
         ts = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
         stored = f'{ts}_{fn}'
-        f.save(os.path.join(UPLOAD, stored))
+        try:
+            if os.environ.get('DATABASE_URL'):
+                storage_upload(stored, f, f.mimetype)
+            else:
+                f.save(os.path.join(UPLOAD, stored))
+        except Exception as exc:
+            con.close()
+            return jsonify({'error': f'Evidence storage failed: {str(exc)[:180]}'}), 503
         cur = con.execute('INSERT INTO evidence (check_id,filename,stored,note,uploaded_at) VALUES (?,?,?,?,?)',
                           (cid, fn, stored, note, now()))
         saved.append(dict(con.execute('SELECT * FROM evidence WHERE id=?', (cur.lastrowid,)).fetchone()))
@@ -323,8 +375,11 @@ def delete_evidence(eid):
     if not r:
         con.close(); abort(404)
     try:
-        os.remove(os.path.join(UPLOAD, r['stored']))
-    except OSError:
+        if os.environ.get('DATABASE_URL'):
+            storage_delete(r['stored'])
+        else:
+            os.remove(os.path.join(UPLOAD, r['stored']))
+    except Exception:
         pass
     con.execute('DELETE FROM evidence WHERE id=?', (eid,))
     con.commit()
@@ -416,6 +471,14 @@ def source_page(n):
 
 @app.route('/uploads/<path:fn>')
 def uploads(fn):
+    if os.environ.get('DATABASE_URL'):
+        try:
+            from flask import Response
+            data = storage_download(fn)
+            return Response(data, mimetype='application/octet-stream',
+                            headers={'Content-Disposition': f'attachment; filename="{os.path.basename(fn)}"'})
+        except Exception:
+            abort(404)
     return send_from_directory(UPLOAD, fn, as_attachment=True)
 
 @app.route('/api/export')
