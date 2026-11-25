@@ -189,3 +189,23 @@ fbech/
 The layout is a fixed sidebar + fluid content area. Below 900 px the sidebar becomes a slide-in drawer (☰), grids collapse to one column, tables scroll inside their cards and the printable report scrolls horizontally inside its sections. Verified with no horizontal page overflow at 1500 px, 1024 px and 390 px.
 
 **Reminder:** a complete checklist is not a compliant vehicle. Technical Inspection and the BSC Technical Committee decide acceptance at the event.
+
+
+## Production deployment (Render)
+
+Create a **Web Service** from this repository and select branch `feature/auth-render-deployment` (merge to `main` only when ready).
+
+- Runtime: Python
+- Build command: `pip install -r requirements.txt`
+- Start command: `python seed.py && gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT app:app`
+- Add a persistent disk mounted at `/var/data` (at least 1 GB).
+- Environment variables:
+  - `FBECH_DATA_DIR=/var/data`
+  - `SECRET_KEY` = a long random secret
+  - `FBECH_ADMIN_USERNAME` = chosen admin username
+  - `FBECH_ADMIN_PASSWORD` = strong initial admin password
+  - `COOKIE_SECURE=1`
+
+The first deployment creates the initial admin account only if the database has no users. There is no public registration. Keep one Gunicorn worker because SQLite is stored on the persistent disk. Back up `/var/data/fbech.db` and `/var/data/uploads/evidence/` regularly.
+
+Rulebook pages, figures and individual rule lookups remain public. Workspace APIs, exports and evidence downloads require login. Do not expose a production instance without setting the environment variables above.
