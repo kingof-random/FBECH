@@ -59,7 +59,7 @@ init_auth()
 def protect_private_data():
     path = request.path
     public_paths = ('/api/login', '/api/session', '/api/logout')
-    public_rulebook = path.startswith('/api/rules/') or path.startswith('/source/page/') or path in ('/figures.json',)
+    public_rulebook = path.startswith('/api/rules/') or path == '/api/public-rules' or path.startswith('/source/page/') or path in ('/figures.json',)
     if path.startswith('/api/') and path not in public_paths and not public_rulebook:
         if not session.get('user_id'):
             return jsonify({'error': 'Authentication required'}), 401
