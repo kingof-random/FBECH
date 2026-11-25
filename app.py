@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-import json, os, re, sqlite3, datetime, secrets, werkzeug, uuid, requests\nfrom urllib.parse import quote\nfrom db_layer import connect as connect_database
+import json, os, re, sqlite3, datetime, secrets, werkzeug, requests
+from urllib.parse import quote
+from db_layer import connect as connect_database
 from flask import Flask, request, jsonify, send_from_directory, render_template, abort, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_limiter import Limiter
