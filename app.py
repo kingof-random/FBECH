@@ -243,6 +243,17 @@ def bootstrap():
     return jsonify({'meta': meta, 'rules': rules, 'checks': checks, 'evidence': ev,
                     'docs': docs, 'issues': issues, 'revisions': revisions, 'stats': st})
 
+@app.route('/rulebook')
+def public_rulebook():
+    return render_template('public.html')
+
+@app.route('/api/public-rules')
+def public_rules():
+    con = db()
+    rows = con.execute('SELECT id,part,article,title,page,status FROM rules ORDER BY page,id').fetchall()
+    con.close()
+    return jsonify([dict(r) for r in rows])
+
 @app.route('/api/rules/<rid>')
 def rule(rid):
     con = db()
