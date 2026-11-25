@@ -52,7 +52,7 @@ function showLogin(message=''){
     <label style="display:block;margin:14px 0 6px">Password</label><input id="loginPass" type="password" autocomplete="current-password" required style="box-sizing:border-box;width:100%;padding:12px;background:#0b1118;color:#fff;border:1px solid #455466;border-radius:8px">
     <p id="loginError" style="color:#ff8c78;min-height:20px;font-size:13px">${esc(message)}</p>
     <button type="submit" style="width:100%;padding:12px;border:0;border-radius:8px;background:#f06a32;color:#fff;font-weight:800;cursor:pointer">Sign in</button>
-    <p style="font-size:11px;color:#82909e;margin:18px 0 0">Public rulebook source pages remain accessible without signing in.</p>
+    <p style="font-size:12px;margin:18px 0 0"><a href="/rulebook" style="color:#ff9b62">Browse the public rulebook without signing in →</a></p>
   </form>`;
   $('#loginForm').onsubmit=async e=>{e.preventDefault();const b=$('#loginForm button');b.disabled=true;b.textContent='Signing in…';try{const r=await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#loginUser').value,password:$('#loginPass').value})});window.FBECH_CSRF=r.csrf_token;await startApp();}catch(err){$('#loginError').textContent=err.message==='401'?'Incorrect username or password':err.message;b.disabled=false;b.textContent='Sign in';}};
 }
