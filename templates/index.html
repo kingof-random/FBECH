@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<div id="authRoot" style="display:none;min-height:100vh;background:#080d13;place-items:center;padding:20px;box-sizing:border-box"></div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
@@ -57,7 +58,7 @@
       <div class="top-actions">
         <a class="btn ghost" href="/api/export" title="Download JSON backup">Export</a>
         <button class="btn ghost" id="printBtn">Print</button>
-        <div class="userchip"><span class="avatar">FX</span><div><b>FEROX</b><small>Crew</small></div></div>
+        <div class="userchip"><span class="avatar">FX</span><div><b>FEROX</b><small>Admin</small></div></div><button class="btn ghost" id="logoutBtn" onclick="(async()=>{await fetch('/api/logout',{method:'POST',headers:{'X-CSRF-Token':window.FBECH_CSRF||''}});location.reload();})()">Sign out</button>
       </div>
     </header>
     <main class="content" id="view">
